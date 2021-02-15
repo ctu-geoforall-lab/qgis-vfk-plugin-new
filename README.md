@@ -1,4 +1,4 @@
-# QGIS plugin for Czech cadastral data
+# Zásuvný plugin QGIS pro katastrální data
 
 ## Dokumentace
 
