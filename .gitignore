@@ -60,3 +60,5 @@ docs/_build/
 # PyBuilder
 target/
 
+###
+sample_data/Export_vse.vfk
