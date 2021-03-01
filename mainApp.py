@@ -267,7 +267,7 @@ class MainApp(QDockWidget, QMainWindow, Ui_MainApp):
                 )
                 return
             else:
-                vectorLayer.setSelectedFeatures(fIds)
+                vectorLayer.selectByIds(fIds)
 
     def __search(self, layer, searchString, error):
         """
@@ -281,20 +281,25 @@ class MainApp(QDockWidget, QMainWindow, Ui_MainApp):
         search = QgsExpression(searchString)
         rect = QgsRectangle()
         fIds = []
+        
+        searchContext = QgsExpressionContext()
+        searchContext.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(layer))
 
         if search.hasParserError():
             error += "Parsing error:" + search.parserErrorString()
             return fIds
-        if not search.prepare(layer.fields()):
+        # if not search.prepare(layer.fields()):
+        if not search.prepare(searchContext):
             error + "Evaluation error:" + search.evalErrorString()
 
-        layer.select(rect, False)
+        # Is this use of layer.select deprecated? I dont understand why it was here.
+        # layer.select(rect, False)
         fit = QgsFeatureIterator(layer.getFeatures())
         f = QgsFeature()
 
         while fit.nextFeature(f):
-
-            if search.evaluate(f):
+            searchContext.setFeature(f)
+            if search.evaluate(searchContext):
                 fIds.append(f.id())
             # check if there were errors during evaluating
             if search.hasEvalError():
