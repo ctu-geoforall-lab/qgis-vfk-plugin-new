@@ -48,6 +48,13 @@ from .searchFormController import *
 from .openThread import *
 from .applyChanges import *
 
+from .ctios import CtiOs
+from .ctios.exceptions import CtiOsError
+from .ctios.exceptions import CtiOsDbError
+from .ctios.exceptions import CtiOsRequestError
+from .ctios.exceptions import CtiOsResponseError
+
+
 class VFKError(Exception):
     pass
 
@@ -232,6 +239,48 @@ class MainApp(QDockWidget, QMainWindow, Ui_MainApp):
                 self.vfkBrowser.currentUrl(), fileName, self.vfkBrowser.ExportFormat.Html)
             if export_succesfull:
                 self.succesfullExport("HTML")
+    def downloadAllPosidents(self):
+        QgsMessageLog.logMessage(u"Downloading posidents")
+        ctiosInterface = CtiOs("WSTEST", "WSHESLO")
+
+        # Set db
+        
+        try:
+            db_path = ctiosInterface.set_db(gdal.GetConfigOption('OGR_VFK_DB_NAME'))
+        except CtiOsError as e:
+            return 1
+            
+        listTelID=""
+        listParID=""
+        for layer in self.__mLoadedLayers:
+            id = self.__mLoadedLayers[layer]
+            QgsMessageLog.logMessage("Layer = "+id)
+            vectorLayer = QgsProject.instance().mapLayer(id)
+            features = vectorLayer.selectedFeatures()
+            QgsMessageLog.logMessage("Feature count = "+str(len(features)))
+            first=True
+            for f in features:
+                if first:
+                    first=False
+                else:
+                    listParID+=","
+                    listTelID+=","
+                listParID+=str(f["ID"])
+                listTelID+=str(f["TEL_ID"])
+
+        # Set input ids from file or db
+        try:
+            #ids = ctiosInterface.set_ids_from_db(db_path, "SELECT vla.opsub_id from vla,par where par.ID in ("+listParID+") and vla.TEL_ID=par.TEL_ID")
+            ids = ctiosInterface.set_ids_from_db(db_path, "SELECT vla.opsub_id from vla where vla.TEL_ID in ("+listTelID+")")
+        except (CtiOsError, CtiOsDbError)  as e:
+            return 1
+
+        try:
+            ctiosInterface.query_requests(ids, db_path)
+        except CtiOsError as e:
+            QgsMessageLog.logMessage(u"CTIOS Error")
+            return 1
+
 
     def setSelectionChangedConnected(self, connected):
         """
@@ -323,10 +372,14 @@ class MainApp(QDockWidget, QMainWindow, Ui_MainApp):
         amendment_file = self.__checkIfAmendmentFile(self.__fileName[0])
 
         # prepare name for database
-        if amendment_file:
-            new_database_name = '{}_zmeny.db'.format(os.path.basename(self.__fileName[0]).split('.')[0])
+        extension = os.path.basename(self.__fileName[0]).split('.')[1];
+        if extension == 'db':
+            new_database_name = os.path.basename(self.__fileName[0])
         else:
-            new_database_name = '{}_stav.db'.format(os.path.basename(self.__fileName[0]).split('.')[0])
+            if amendment_file:
+                new_database_name = '{}_zmeny.db'.format(os.path.basename(self.__fileName[0]).split('.')[0])
+            else:
+                new_database_name = '{}_stav.db'.format(os.path.basename(self.__fileName[0]).split('.')[0])
 
         gdal.SetConfigOption(
             'OGR_VFK_DB_NAME',
@@ -916,6 +969,7 @@ class MainApp(QDockWidget, QMainWindow, Ui_MainApp):
 
         self.actionShowInfoaboutSelection.toggled.connect(self.setSelectionChangedConnected)
         self.actionShowHelpPage.triggered.connect(self.vfkBrowser.showHelpPage)
+        self.actionDownloadAllPosidents.triggered.connect(self.downloadAllPosidents)
 
         self.loadVfkButton.clicked.connect(self.loadVfkButton_clicked)
 
@@ -948,6 +1002,7 @@ class MainApp(QDockWidget, QMainWindow, Ui_MainApp):
         self.__mBrowserToolbar.addAction(self.actionShowInfoaboutSelection)
         self.__mBrowserToolbar.addSeparator()
         self.__mBrowserToolbar.addWidget(bt)
+        self.__mBrowserToolbar.addAction(self.actionDownloadAllPosidents)
         self.__mBrowserToolbar.addSeparator()
         self.__mBrowserToolbar.addAction(self.actionShowHelpPage)
 
