@@ -787,6 +787,18 @@
     <string>Ctrl+H</string>
    </property>
   </action>
+  <action name="actionDownloadAllPosidents">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/downloadAllPosidents.png</normaloff>:/downloadAllPosidents.png</iconset>
+   </property>
+   <property name="text">
+    <string>downloadAllPosidents</string>
+   </property>
+   <property name="toolTip">
+    <string>Stáhnout všechny posidenty z katastru</string>
+   </property>
+  </action>
   <action name="actionZpracujZmeny">
    <property name="checkable">
     <bool>true</bool>
